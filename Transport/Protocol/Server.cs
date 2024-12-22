@@ -1,35 +1,47 @@
+// *********************************************************************************
+// # Project: JFramework
+// # Unity: 6000.3.5f1
+// # Author: 云谷千羽
+// # Version: 1.0.0
+// # History: 2024-11-29 13:11:20
+// # Recently: 2024-12-22 20:12:06
+// # Copyright: 2024, 云谷千羽
+// # Description: This is an automatically generated comment.
+// *********************************************************************************
+
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 
-// ReSharper disable AssignNullToNotNullAttribute
-// ReSharper disable PossibleNullReferenceException
-
 namespace JFramework.Udp
 {
     public sealed class Server
     {
+        private readonly byte[] buffer;
         private readonly Dictionary<int, Client> clients = new Dictionary<int, Client>();
         private readonly HashSet<int> copies = new HashSet<int>();
-        private Socket socket;
-        private EndPoint endPoint;
-        private readonly byte[] buffer;
         private readonly Setting setting;
-        private event Action<int> OnConnect;
-        private event Action<int> OnDisconnect;
-        private event Action<int, ArraySegment<byte>, int> OnReceive;
+        private EndPoint endPoint;
+        private Socket socket;
 
-        public Server(Setting setting, Action<int> OnConnect, Action<int> OnDisconnect, Action<int, ArraySegment<byte>, int> OnReceive)
+        public Server(Setting setting, Action<int> OnConnect, Action<int> OnDisconnect, Action<int, int, string> OnError,
+            Action<int, ArraySegment<byte>, int> OnReceive)
         {
             this.setting = setting;
+            this.OnError = OnError;
             this.OnReceive = OnReceive;
             this.OnConnect = OnConnect;
             this.OnDisconnect = OnDisconnect;
             buffer = new byte[setting.MaxUnit];
             endPoint = setting.DualMode ? new IPEndPoint(IPAddress.IPv6Any, 0) : new IPEndPoint(IPAddress.Any, 0);
         }
+
+        private event Action<int> OnConnect;
+        private event Action<int> OnDisconnect;
+        private event Action<int, int, string> OnError;
+        private event Action<int, ArraySegment<byte>, int> OnReceive;
 
         public void Connect(ushort port)
         {
@@ -78,7 +90,7 @@ namespace JFramework.Udp
             try
             {
                 if (!socket.Poll(0, SelectMode.SelectRead)) return false;
-                int size = socket.ReceiveFrom(buffer, 0, buffer.Length, SocketFlags.None, ref endPoint);
+                var size = socket.ReceiveFrom(buffer, 0, buffer.Length, SocketFlags.None, ref endPoint);
                 segment = new ArraySegment<byte>(buffer, 0, size);
                 clientId = endPoint.GetHashCode();
                 return true;
@@ -90,7 +102,7 @@ namespace JFramework.Udp
                     return false;
                 }
 
-                Log.Error($"服务器接收信息失败！\n{e}");
+                Log.Info($"服务器接收信息失败！\n{e}");
                 return false;
             }
         }
@@ -98,7 +110,7 @@ namespace JFramework.Udp
 
         public void Send(int clientId, ArraySegment<byte> segment, int channel)
         {
-            if (clients.TryGetValue(clientId, out Client client))
+            if (clients.TryGetValue(clientId, out var client))
             {
                 client.SendData(segment, channel);
             }
@@ -106,7 +118,7 @@ namespace JFramework.Udp
 
         public void Disconnect(int clientId)
         {
-            if (clients.TryGetValue(clientId, out Client client))
+            if (clients.TryGetValue(clientId, out var client))
             {
                 client.Disconnect();
             }
@@ -114,7 +126,7 @@ namespace JFramework.Udp
 
         private Client AddClient(int clientId)
         {
-            return new Client(OnConnect, OnDisconnect, OnReceive, OnSend, setting, Common.GenerateCookie(), endPoint);
+            return new Client(OnConnect, OnDisconnect, OnError, OnReceive, OnSend, setting, Common.GenerateCookie(), endPoint);
 
             void OnConnect(Client client)
             {
@@ -128,6 +140,11 @@ namespace JFramework.Udp
                 copies.Add(clientId);
                 Log.Info($"[{DateTime.Now:MM-dd HH:mm:ss}] 客户端 {clientId} 从服务器断开。");
                 this.OnDisconnect?.Invoke(clientId);
+            }
+
+            void OnError(int error, string message)
+            {
+                this.OnError?.Invoke(clientId, error, message);
             }
 
             void OnReceive(ArraySegment<byte> message, int channel)
@@ -164,7 +181,7 @@ namespace JFramework.Udp
 
         public void EarlyUpdate()
         {
-            while (TryReceive(out var segment, out int clientId))
+            while (TryReceive(out var segment, out var clientId))
             {
                 if (!clients.TryGetValue(clientId, out var client))
                 {
@@ -184,7 +201,7 @@ namespace JFramework.Udp
                 client.EarlyUpdate();
             }
 
-            foreach (int client in copies)
+            foreach (var client in copies)
             {
                 clients.Remove(client);
             }
@@ -208,27 +225,32 @@ namespace JFramework.Udp
             socket = null;
         }
 
-        private sealed class Client : Proxy
+        private sealed class Client : Agent
         {
             public readonly EndPoint endPoint;
-            private event Action OnDisconnect;
-            private event Action<Client> OnConnect;
-            private event Action<ArraySegment<byte>> OnSend;
-            private event Action<ArraySegment<byte>, int> OnReceive;
 
-            public Client(Action<Client> OnConnect, Action OnDisconnect, Action<ArraySegment<byte>, int> OnReceive, Action<ArraySegment<byte>> OnSend, Setting setting, uint cookie, EndPoint endPoint) : base(setting, cookie)
+            public Client(Action<Client> OnConnect, Action OnDisconnect, Action<int, string> OnError,
+                Action<ArraySegment<byte>, int> OnReceive, Action<ArraySegment<byte>> OnSend, Setting setting, uint cookie,
+                EndPoint endPoint) : base(setting, cookie)
             {
                 this.OnSend = OnSend;
+                this.OnError = OnError;
                 this.OnConnect = OnConnect;
                 this.OnReceive = OnReceive;
                 this.OnDisconnect = OnDisconnect;
                 this.endPoint = endPoint;
-                state = State.Connect;
+                status = Status.Connect;
             }
+
+            private event Action OnDisconnect;
+            private event Action<Client> OnConnect;
+            private event Action<int, string> OnError;
+            private event Action<ArraySegment<byte>> OnSend;
+            private event Action<ArraySegment<byte>, int> OnReceive;
 
             protected override void Connected()
             {
-                SendReliable(ReliableHeader.Connect, default);
+                SendReliable(Reliable.Connect, default);
                 OnConnect?.Invoke(this);
             }
 
@@ -238,6 +260,8 @@ namespace JFramework.Udp
 
             protected override void Receive(ArraySegment<byte> message, int channel) => OnReceive?.Invoke(message, channel);
 
+            protected override void Logger(Error error, string message) => OnError?.Invoke((int)error, message);
+
             public void Input(ArraySegment<byte> segment)
             {
                 if (segment.Count <= 1 + 4)
@@ -246,9 +270,9 @@ namespace JFramework.Udp
                 }
 
                 var channel = segment.Array[segment.Offset];
-                Utility.Decode32U(segment.Array, segment.Offset + 1, out var newCookie);
+                Utils.Decode32U(segment.Array, segment.Offset + 1, out var newCookie);
 
-                if (state == State.Connected)
+                if (status == Status.Connected)
                 {
                     if (newCookie != cookie)
                     {

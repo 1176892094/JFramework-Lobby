@@ -1,36 +1,48 @@
+// *********************************************************************************
+// # Project: JFramework
+// # Unity: 6000.3.5f1
+// # Author: 云谷千羽
+// # Version: 1.0.0
+// # History: 2024-11-29 13:11:20
+// # Recently: 2024-12-22 20:12:12
+// # Copyright: 2024, 云谷千羽
+// # Description: This is an automatically generated comment.
+// *********************************************************************************
+
 using System;
 using System.Net;
 using System.Net.Sockets;
 
-// ReSharper disable AssignNullToNotNullAttribute
-// ReSharper disable PossibleNullReferenceException
-
 namespace JFramework.Udp
 {
-    public sealed class Client : Proxy
+    public sealed class Client : Agent
     {
-        private Socket socket;
-        private EndPoint endPoint;
         private readonly byte[] buffer;
         private readonly Setting setting;
-        private event Action OnConnect;
-        private event Action OnDisconnect;
-        private event Action<ArraySegment<byte>, int> OnReceive;
+        private EndPoint endPoint;
+        private Socket socket;
 
-        public Client(Setting setting, Action OnConnect, Action OnDisconnect, Action<ArraySegment<byte>, int> OnReceive) : base(setting, 0)
+        public Client(Setting setting, Action OnConnect, Action OnDisconnect, Action<int, string> OnError,
+            Action<ArraySegment<byte>, int> OnReceive) : base(setting, 0)
         {
             this.setting = setting;
+            this.OnError = OnError;
             this.OnConnect = OnConnect;
             this.OnReceive = OnReceive;
             this.OnDisconnect = OnDisconnect;
             buffer = new byte[setting.MaxUnit];
         }
 
+        private event Action OnConnect;
+        private event Action OnDisconnect;
+        private event Action<int, string> OnError;
+        private event Action<ArraySegment<byte>, int> OnReceive;
+
         public void Connect(string address, ushort port)
         {
             try
             {
-                if (state != State.Disconnect)
+                if (status != Status.Disconnect)
                 {
                     Log.Warn("客户端已经连接！");
                     return;
@@ -40,18 +52,18 @@ namespace JFramework.Udp
                 if (addresses.Length >= 1)
                 {
                     Reset(setting);
-                    state = State.Connect;
+                    status = Status.Connect;
                     endPoint = new IPEndPoint(addresses[0], port);
                     socket = new Socket(endPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
                     Common.SetBuffer(socket);
                     socket.Connect(endPoint);
                     Log.Info($"客户端连接到：{addresses[0]} 端口：{port}。");
-                    SendReliable(ReliableHeader.Connect, default);
+                    SendReliable(Reliable.Connect, default);
                 }
             }
             catch (SocketException e)
             {
-                Log.Error($"无法解析主机地址：{address}\n{e}");
+                Logger(Error.DnsResolve, $"无法解析主机地址：{address}\n" + e);
                 OnDisconnect?.Invoke();
             }
         }
@@ -64,7 +76,7 @@ namespace JFramework.Udp
             try
             {
                 if (!socket.Poll(0, SelectMode.SelectRead)) return false;
-                int size = socket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
+                var size = socket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
                 segment = new ArraySegment<byte>(buffer, 0, size);
                 return true;
             }
@@ -83,7 +95,7 @@ namespace JFramework.Udp
 
         public void Send(ArraySegment<byte> segment, int channel)
         {
-            if (state == State.Disconnect)
+            if (status == Status.Disconnect)
             {
                 Log.Warn("客户端没有连接，发送消息失败！");
                 return;
@@ -101,7 +113,7 @@ namespace JFramework.Udp
             }
 
             var channel = segment.Array[segment.Offset];
-            Utility.Decode32U(segment.Array, segment.Offset + 1, out var newCookie);
+            Utils.Decode32U(segment.Array, segment.Offset + 1, out var newCookie);
             if (newCookie == 0)
             {
                 Log.Error($"网络代理丢弃了无效的签名缓存。旧：{cookie} 新：{newCookie}");
@@ -143,7 +155,7 @@ namespace JFramework.Udp
                     return;
                 }
 
-                Log.Error($"客户端发送消息失败！\n{e}");
+                Log.Info($"客户端发送消息失败！\n{e}");
             }
         }
 
@@ -152,9 +164,14 @@ namespace JFramework.Udp
             OnReceive?.Invoke(message, channel);
         }
 
+        protected override void Logger(Error error, string message)
+        {
+            OnError?.Invoke((int)error, message);
+        }
+
         protected override void Disconnected()
         {
-            Log.Info($"客户端断开连接。");
+            Log.Info("客户端断开连接。");
             OnDisconnect?.Invoke();
             endPoint = null;
             socket?.Close();
@@ -163,7 +180,7 @@ namespace JFramework.Udp
 
         public override void EarlyUpdate()
         {
-            if (state == State.Disconnect)
+            if (status == Status.Disconnect)
             {
                 return;
             }
@@ -178,7 +195,7 @@ namespace JFramework.Udp
 
         public override void AfterUpdate()
         {
-            if (state == State.Disconnect)
+            if (status == Status.Disconnect)
             {
                 return;
             }

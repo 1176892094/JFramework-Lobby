@@ -1,4 +1,15 @@
-﻿using System;
+﻿// *********************************************************************************
+// # Project: JFramework.Lobby
+// # Unity: 6000.3.5f1
+// # Author: 云谷千羽
+// # Version: 1.0.0
+// # History: 2024-08-28 20:08:49
+// # Recently: 2024-12-23 00:12:20
+// # Copyright: 2024, 云谷千羽
+// # Description: This is an automatically generated comment.
+// *********************************************************************************
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,16 +17,51 @@ namespace JFramework.Net
 {
     public class Process
     {
-        private readonly Transport transport;
-        private readonly Random random = new Random();
-        private readonly HashSet<int> connections = new HashSet<int>();
-        private readonly Dictionary<int, Room> clients = new Dictionary<int, Room>();
         private readonly Dictionary<string, Room> rooms = new Dictionary<string, Room>();
-        public List<Room> roomInfo => rooms.Values.ToList();
+        private readonly Dictionary<int, Room> clients = new Dictionary<int, Room>();
+        private readonly HashSet<int> connections = new HashSet<int>();
+        private readonly Random random = new Random();
+        private readonly Transport transport;
 
         public Process(Transport transport)
         {
             this.transport = transport;
+        }
+
+        public List<Room> roomInfo => rooms.Values.ToList();
+
+        public void ServerError(int clientId, int error, string message)
+        {
+            string reason;
+            switch (error)
+            {
+                case 1:
+                    //        reason = "DnsResolve";
+                    break;
+                case 2:
+                    //        reason = "Timeout";
+                    break;
+                case 3:
+                    reason = "Congestion";
+                    Debug.LogWarning($"客户端: {clientId} 错误代码: {reason}\n{message}");
+                    break;
+                case 4:
+                    reason = "InvalidReceive";
+                    Debug.LogWarning($"客户端: {clientId} 错误代码: {reason}\n{message}");
+                    break;
+                case 5:
+                    reason = "InvalidSend";
+                    Debug.LogWarning($"客户端: {clientId} 错误代码: {reason}\n{message}");
+                    break;
+                case 6:
+                    reason = "ConnectionClosed";
+                    Debug.LogWarning($"客户端: {clientId} 错误代码: {reason}\n{message}");
+                    break;
+                default:
+                    reason = "Unexpected";
+                    Debug.LogWarning($"客户端: {clientId} 错误代码: {reason}\n{message}");
+                    break;
+            }
         }
 
         public void ServerConnect(int clientId)

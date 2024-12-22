@@ -1,4 +1,15 @@
-﻿using System;
+﻿// *********************************************************************************
+// # Project: JFramework.Lobby
+// # Unity: 6000.3.5f1
+// # Author: 云谷千羽
+// # Version: 1.0.0
+// # History: 2024-08-28 20:08:49
+// # Recently: 2024-12-23 00:12:22
+// # Copyright: 2024, 云谷千羽
+// # Description: This is an automatically generated comment.
+// *********************************************************************************
+
+using System;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -50,6 +61,7 @@ namespace JFramework.Net
 
                 transport.Awake();
                 Process = new Process(transport);
+                transport.OnServerError = Process.ServerError;
                 transport.OnServerConnect = Process.ServerConnect;
                 transport.OnServerReceive = Process.ServerReceive;
                 transport.OnServerDisconnect = Process.ServerDisconnect;

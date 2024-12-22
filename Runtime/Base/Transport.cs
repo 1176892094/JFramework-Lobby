@@ -1,4 +1,15 @@
-﻿using System;
+﻿// *********************************************************************************
+// # Project: JFramework.Lobby
+// # Unity: 6000.3.5f1
+// # Author: 云谷千羽
+// # Version: 1.0.0
+// # History: 2024-08-28 20:08:49
+// # Recently: 2024-12-23 00:12:10
+// # Copyright: 2024, 云谷千羽
+// # Description: This is an automatically generated comment.
+// *********************************************************************************
+
+using System;
 
 namespace JFramework.Net
 {
@@ -8,7 +19,7 @@ namespace JFramework.Net
         /// 地址
         /// </summary>
         public string address = "localhost";
-
+        
         /// <summary>
         /// 端口
         /// </summary>
@@ -25,6 +36,11 @@ namespace JFramework.Net
         public Action OnClientDisconnect;
 
         /// <summary>
+        /// 客户端错误事件
+        /// </summary>
+        public Action<int, string> OnClientError;
+
+        /// <summary>
         /// 客户端接收事件
         /// </summary>
         public Action<ArraySegment<byte>, int> OnClientReceive;
@@ -38,6 +54,11 @@ namespace JFramework.Net
         /// 客户端从服务器断开的事件
         /// </summary>
         public Action<int> OnServerDisconnect;
+
+        /// <summary>
+        /// 服务器错误事件
+        /// </summary>
+        public Action<int, int, string> OnServerError;
 
         /// <summary>
         /// 服务器接收客户端消息的事件

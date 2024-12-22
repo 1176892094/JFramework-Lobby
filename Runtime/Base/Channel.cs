@@ -1,18 +1,19 @@
 // *********************************************************************************
 // # Project: JFramework.Lobby
-// # Unity: 2022.3.5f1c1
-// # Author: jinyijie
+// # Unity: 6000.3.5f1
+// # Author: 云谷千羽
 // # Version: 1.0.0
-// # History: 2024-08-29  03:08
-// # Copyright: 2024, jinyijie
+// # History: 2024-08-29 03:08:02
+// # Recently: 2024-12-23 00:12:10
+// # Copyright: 2024, 云谷千羽
 // # Description: This is an automatically generated comment.
 // *********************************************************************************
 
 namespace JFramework.Net
 {
-    public static class Channel
+    internal static class Channel
     {
-        public const byte Reliable = 1;
-        public const byte Unreliable = 2;
+        public const byte Reliable = 1 << 0;
+        public const byte Unreliable = 1 << 1;
     }
 }
