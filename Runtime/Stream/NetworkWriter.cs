@@ -1,40 +1,34 @@
 // *********************************************************************************
-// # Project: Test
-// # Unity: 2022.3.5f1c1
-// # Author: Charlotte
+// # Project: JFramework.Lobby
+// # Unity: 6000.3.5f1
+// # Author: 云谷千羽
 // # Version: 1.0.0
-// # History: 2024-06-05  02:06
-// # Copyright: 2024, Charlotte
+// # History: 2024-08-28 20:08:49
+// # Recently: 2024-12-23 00:12:04
+// # Copyright: 2024, 云谷千羽
 // # Description: This is an automatically generated comment.
 // *********************************************************************************
 
 using System;
-using System.Text;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace JFramework.Net
 {
     [Serializable]
-    public partial class NetworkWriter : IDisposable
+    public class NetworkWriter : IDisposable
     {
-        /// <summary>
-        /// 文本编码
-        /// </summary>
         internal readonly UTF8Encoding encoding = new UTF8Encoding(false, true);
 
-        /// <summary>
-        /// 当前字节数组中的位置
-        /// </summary>
-        public int position;
-
-        /// <summary>
-        /// 缓存的字节数组
-        /// </summary>
         internal byte[] buffer = new byte[1500];
 
-        /// <summary>
-        /// 将数据序列化
-        /// </summary>
+        public int position;
+
+        void IDisposable.Dispose()
+        {
+            NetworkPool<NetworkWriter>.Enqueue(this);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal unsafe void Write<T>(T value) where T : unmanaged
         {
@@ -47,61 +41,31 @@ namespace JFramework.Net
             position += sizeof(T);
         }
 
-        /// <summary>
-        /// 重置位置
-        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void Reset()
         {
             position = 0;
         }
 
-        /// <summary>
-        /// 对象池取出对象
-        /// </summary>
-        /// <returns>返回NetworkWriter类</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static NetworkWriter Pop()
         {
-            var writer = NetworkPool<NetworkWriter>.Pop();
+            var writer = NetworkPool<NetworkWriter>.Dequeue();
             writer.Reset();
             return writer;
         }
 
-        /// <summary>
-        /// 对象池推入对象
-        /// </summary>
-        /// <param name="writer">传入NetworkWriter类</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Push(NetworkWriter writer)
         {
-            NetworkPool<NetworkWriter>.Push(writer);
+            NetworkPool<NetworkWriter>.Enqueue(writer);
         }
 
-        /// <summary>
-        /// 重写字符串转化方法
-        /// </summary>
-        /// <returns></returns>
         public override string ToString()
         {
             return BitConverter.ToString(buffer, 0, position);
         }
 
-        /// <summary>
-        /// 释放内存
-        /// </summary>
-        void IDisposable.Dispose()
-        {
-            NetworkPool<NetworkWriter>.Push(this);
-        }
-    }
-
-    public partial class NetworkWriter
-    {
-        /// <summary>
-        /// 确保容量
-        /// </summary>
-        /// <param name="length">传入长度</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void AddCapacity(int length)
         {
@@ -111,19 +75,12 @@ namespace JFramework.Net
             }
         }
 
-        /// <summary>
-        /// 转化为数组分片
-        /// </summary>
-        /// <returns>返回数组分片</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator ArraySegment<byte>(NetworkWriter writer)
         {
             return new ArraySegment<byte>(writer.buffer, 0, writer.position);
         }
 
-        /// <summary>
-        /// 写入Byte数组
-        /// </summary>
         public void WriteBytes(byte[] segment, int offset, int count)
         {
             AddCapacity(position + count);

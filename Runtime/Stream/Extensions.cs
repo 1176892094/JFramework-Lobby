@@ -1,10 +1,11 @@
 // *********************************************************************************
-// # Project: Test
-// # Unity: 2022.3.5f1c1
-// # Author: Charlotte
+// # Project: JFramework.Lobby
+// # Unity: 6000.3.5f1
+// # Author: 云谷千羽
 // # Version: 1.0.0
-// # History: 2024-06-05  04:06
-// # Copyright: 2024, Charlotte
+// # History: 2024-08-28 20:08:49
+// # Recently: 2024-12-23 00:12:04
+// # Copyright: 2024, 云谷千羽
 // # Description: This is an automatically generated comment.
 // *********************************************************************************
 
@@ -64,7 +65,7 @@ namespace JFramework.Net
         {
             return reader.Read<uint>();
         }
-        
+
         public static void WriteString(this NetworkWriter writer, string value)
         {
             if (value == null)

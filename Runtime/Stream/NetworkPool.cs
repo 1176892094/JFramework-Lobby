@@ -1,10 +1,11 @@
 // *********************************************************************************
-// # Project: Server
-// # Unity: 2022.3.5f1c1
-// # Author: jinyijie
+// # Project: JFramework.Lobby
+// # Unity: 6000.3.5f1
+// # Author: 云谷千羽
 // # Version: 1.0.0
-// # History: 2024-08-27  20:08
-// # Copyright: 2024, jinyijie
+// # History: 2024-08-28 20:08:49
+// # Recently: 2024-12-23 00:12:04
+// # Copyright: 2024, 云谷千羽
 // # Description: This is an automatically generated comment.
 // *********************************************************************************
 
@@ -14,26 +15,21 @@ namespace JFramework.Net
 {
     public static class NetworkPool<T> where T : new()
     {
-        private static readonly Queue<T> objects = new Queue<T>();
-        private static readonly HashSet<T> unique = new HashSet<T>();
+        private static readonly Queue<T> unused = new Queue<T>();
+        private static readonly HashSet<T> cached = new HashSet<T>();
 
-        public static T Pop()
+        public static T Dequeue()
         {
-            if (objects.Count > 0)
-            {
-                var obj = objects.Dequeue();
-                unique.Remove(obj);
-                return obj;
-            }
-
-            return new T();
+            var assetData = unused.Count > 0 ? unused.Dequeue() : new T();
+            cached.Add(assetData);
+            return assetData;
         }
 
-        public static void Push(T obj)
+        public static void Enqueue(T assetData)
         {
-            if (unique.Add(obj))
+            if (cached.Remove(assetData))
             {
-                objects.Enqueue(obj);
+                unused.Enqueue(assetData);
             }
         }
     }
